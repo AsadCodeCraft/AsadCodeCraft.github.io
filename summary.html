@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Attendance Summary</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f9;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .container {
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      width: 90%; /* Adjusted for responsiveness */
+      max-width: 800px;
+      margin-top: 30px;
+      overflow-x: auto; /* Enable horizontal scroll on smaller screens */
+    }
+
+    h2 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: #333;
+      font-weight: bold;
+    }
+
+    select {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      margin-bottom: 20px;
+      box-sizing: border-box;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    th, td {
+      padding: 12px;
+      text-align: center;
+      border: 1px solid #ddd;
+    }
+
+    th {
+      background-color: #f2f2f2;
+      color: #333;
+    }
+
+    td {
+      background-color: #fff;
+    }
+
+    caption {
+      caption-side: top;
+      font-weight: bold;
+      font-size: 1.2em;
+      margin-bottom: 10px;
+      color: #333;
+    }
+
+    .percentage {
+      font-weight: bold;
+      color: #007bff;
+    }
+
+    .percentage.good {
+      color: #28a745;
+    }
+
+    .percentage.bad {
+      color: #dc3545;
+    }
+
+    /* Media query for responsiveness */
+    @media (max-width: 768px) {
+      .container {
+        width: 100%; /* Adjust to full width on smaller screens */
+        border-radius: 0; /* Remove border-radius for full-width container */
+      }
+
+      table {
+        font-size: 14px; /* Decrease font size for smaller screens */
+      }
+    }
+    .button-container {
+      display: flex;
+      justify-content: center;
+      margin-top: 20px;
+    }
+
+    .print-button {
+      padding: 10px 20px;
+      background-color: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .print-button:hover {
+      background-color: #0056b3;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+  <script type="module">
+    // Import the functions you need from the Firebase SDKs
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.7/firebase-app.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.6.7/firebase-database.js";
+
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+        apiKey: "AIzaSyBQymRPbM7lQwamgHa6nrOKirt9i_TOwiM",
+            authDomain: "attendance-81767.firebaseapp.com",
+            databaseURL: "https://attendance-81767-default-rtdb.firebaseio.com",
+            projectId: "attendance-81767",
+            storageBucket: "attendance-81767.appspot.com",
+            messagingSenderId: "188521909065",
+            appId: "1:188521909065:web:2ac3ac68496c1b6dd52898"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const database = getDatabase(app);
+
+    // Function to fetch and display attendance data for all subjects in a specific month
+    function fetchAttendanceData(month) {
+      const subjects = ['bigdata', 'deeplearning', 'tsa', 'vip'];
+
+      // Clear previous table content
+      const tableBody = document.getElementById('attendanceTableBody');
+      tableBody.innerHTML = '';
+
+      subjects.forEach(subject => {
+        const monthRef = ref(database, `${subject}/${month}`);
+        onValue(monthRef, (snapshot) => {
+          const data = snapshot.val();
+          let totalPresent = 0;
+          let totalAbsent = 0;
+          let totalLectures = 0;
+
+          // Calculate total present, absent, and total lectures
+          if (data) {
+            Object.values(data).forEach((lecture) => {
+              const lectures = parseInt(lecture.Lecture);
+              totalLectures += lectures;
+              if (lecture.Status === 'Present') {
+                totalPresent += lectures;
+              } else if (lecture.Status === 'Absent') {
+                totalAbsent += lectures;
+              }
+            });
+          }
+
+          // Append data to table
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${subject}</td>
+            <td>${totalPresent}</td>
+            <td>${totalAbsent}</td>
+            <td>${totalLectures}</td>
+            <td class="${getPercentageClass(totalPresent, totalLectures)}">${calculatePercentage(totalPresent, totalLectures)}%</td>
+          `;
+          tableBody.appendChild(row);
+        });
+      });
+
+      // Update month header
+      const monthHeader = document.getElementById('monthHeader');
+      monthHeader.textContent = month;
+    }
+
+    // Helper function to calculate percentage
+    function calculatePercentage(present, total) {
+      return ((present / total) * 100 || 0).toFixed(2);
+    }
+
+    // Helper function to determine percentage color class
+    function getPercentageClass(present, total) {
+      const percentage = (present / total) * 100 || 0;
+      if (percentage >= 75) {
+        return 'percentage good';
+      } else if (percentage >= 50) {
+        return 'percentage';
+      } else {
+        return 'percentage bad';
+      }
+    }
+
+    // Event listener for page load
+    document.addEventListener('DOMContentLoaded', () => {
+      // Populate month dropdown
+      const monthDropdown = document.getElementById('selectMonth');
+      ['June', 'July', 'August'].forEach((month) => {
+        const option = document.createElement('option');
+        option.value = month;
+        option.textContent = month;
+        monthDropdown.appendChild(option);
+      });
+
+      // Fetch initial data based on default selection
+      fetchAttendanceData('June'); // Initial month
+
+      // Event listener for dropdown changes
+      monthDropdown.addEventListener('change', () => {
+        const selectedMonth = monthDropdown.value;
+        fetchAttendanceData(selectedMonth);
+      });
+    });
+  </script>
+</head>
+<body>
+  <div class="container">
+    <h2>Attendance Summary - <span id="monthHeader">June</span></h2>
+
+    <!-- Dropdown for Month -->
+    <label for="selectMonth">Select Month:</label>
+    <select id="selectMonth">
+      <!-- Options will be dynamically added here -->
+    </select>
+
+    <!-- Attendance Table -->
+    <table>
+      <thead>
+        <tr>
+          <th>Subject Name</th>
+          <th>Total Present</th>
+          <th>Total Absent</th>
+          <th>Total Lectures</th>
+          <th>Percentage</th>
+        </tr>
+      </thead>
+      <tbody id="attendanceTableBody">
+        <!-- Data will be dynamically added here -->
+      </tbody>
+    </table>
+    <div class="button-container">
+        <a href="index.html"><button id="printButton" class="print-button">Add Attendance</button></a>
+      </div>
+  </div>
+</body>
+</html>
